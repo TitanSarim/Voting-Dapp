@@ -4,6 +4,7 @@ import { Program } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { Votingdapp } from "../target/types/votingdapp";
 import { BankrunProvider, startAnchor } from "anchor-bankrun";
+import { publicKey } from "@coral-xyz/anchor/dist/cjs/utils";
 
 // Load the Interface Definition Language (IDL) for the Voting DApp program
 const IDL = require("../target/idl/votingdapp.json");
@@ -15,20 +16,26 @@ const votingAddress = new PublicKey(
 
 // Start the test suite for the Voting DApp
 describe("Voting", () => {
-  it("Initialize Poll", async () => {
+  let context;
+  let provider;
+  let votingProgram: anchor.Program<Votingdapp>;
+
+  beforeAll(async () => {
     // Set up an Anchor test environment using Bankrun (a Solana testing framework)
-    const context = await startAnchor(
+    context = await startAnchor(
       "", // Empty string indicates using default configurations
       [{ name: "voting", programId: votingAddress }], // Define the Solana program we are testing
       []
     );
 
     // Create a provider instance to interact with the program
-    const provider = new BankrunProvider(context);
+    provider = new BankrunProvider(context);
 
     // Instantiate the program object using the IDL and provider
-    const votingProgram = new Program<Votingdapp>(IDL, provider);
+    votingProgram = new Program<Votingdapp>(IDL, provider);
+  });
 
+  it("Initialize Poll", async () => {
     // Call the `initializePoll` method to create a new poll
     await votingProgram.methods
       .initializePoll(
@@ -52,5 +59,58 @@ describe("Voting", () => {
     expect(poll.pollId.toNumber()).toEqual(1);
     expect(poll.description).toEqual("What is your fav type of cake");
     expect(poll.pollStart.toNumber()).toBeLessThan(poll.pollEnd.toNumber());
+  });
+
+  it("initialize candidate", async () => {
+    await votingProgram.methods
+      .initializeCandidate(
+        "Alice", // Candidate name
+        new anchor.BN(1) // Initial vote count (if applicable)
+      )
+      .rpc();
+    await votingProgram.methods
+      .initializeCandidate(
+        "Smooth", // Candidate name
+        new anchor.BN(1) // Initial vote count (if applicable)
+      )
+      .rpc();
+
+    const [AliceAddress] = PublicKey.findProgramAddressSync(
+      [new anchor.BN(1).toArrayLike(Buffer, "le", 8), Buffer.from("Alice")],
+      votingAddress
+    );
+
+    const aliceCandidate = await votingProgram.account.candidate.fetch(
+      AliceAddress
+    );
+    console.log("aliceCandidate", aliceCandidate);
+    expect(aliceCandidate.candidateVotes.toNumber()).toEqual(0);
+
+    const [smoothAddress] = PublicKey.findProgramAddressSync(
+      [new anchor.BN(1).toArrayLike(Buffer, "le", 8), Buffer.from("Smooth")],
+      votingAddress
+    );
+
+    const smoothCandidate = await votingProgram.account.candidate.fetch(
+      smoothAddress
+    );
+
+    console.log("aliceCandidate", smoothCandidate);
+    expect(smoothCandidate.candidateVotes.toNumber()).toEqual(0);
+  });
+
+  it("vote", async () => {
+    await votingProgram.methods.vote("Alice", new anchor.BN(1)).rpc();
+
+    const [AliceAddress] = PublicKey.findProgramAddressSync(
+      [new anchor.BN(1).toArrayLike(Buffer, "le", 8), Buffer.from("Alice")],
+      votingAddress
+    );
+
+    const aliceCandidate = await votingProgram.account.candidate.fetch(
+      AliceAddress
+    );
+    console.log("aliceCandidate", aliceCandidate);
+    expect(aliceCandidate.candidateVotes.toNumber()).toEqual(1);
   });
 });
