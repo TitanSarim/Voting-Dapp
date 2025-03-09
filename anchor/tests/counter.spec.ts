@@ -11,28 +11,27 @@ const IDL = require("../target/idl/votingdapp.json");
 
 // Define the public key of the deployed voting program
 const votingAddress = new PublicKey(
-  "coUnmi3oBUtwtd9fjeAvSsJssXh5A5xyPbhpewyzRVF"
+  "Hje6Mu9bR9szyrHsb3fMt96Z1kZ8Z4KKcfTyc34sU9D3"
 );
 
 // Start the test suite for the Voting DApp
 describe("Voting", () => {
   let context;
   let provider;
-  let votingProgram: anchor.Program<Votingdapp>;
+  anchor.setProvider(anchor.AnchorProvider.env());
+  let votingProgram = anchor.workspace.Votingdapp as Program<Votingdapp>;
 
   beforeAll(async () => {
     // Set up an Anchor test environment using Bankrun (a Solana testing framework)
-    context = await startAnchor(
-      "", // Empty string indicates using default configurations
-      [{ name: "voting", programId: votingAddress }], // Define the Solana program we are testing
-      []
-    );
-
+    // context = await startAnchor(
+    //   "", // Empty string indicates using default configurations
+    //   [{ name: "voting", programId: votingAddress }], // Define the Solana program we are testing
+    //   []
+    // );
     // Create a provider instance to interact with the program
-    provider = new BankrunProvider(context);
-
+    //provider = new BankrunProvider(context);
     // Instantiate the program object using the IDL and provider
-    votingProgram = new Program<Votingdapp>(IDL, provider);
+    // votingProgram = new Program<Votingdapp>(IDL, provider);
   });
 
   it("Initialize Poll", async () => {
